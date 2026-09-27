@@ -11,13 +11,14 @@ public sealed class TenantLogContextMiddleware(RequestDelegate next)
     public async Task InvokeAsync(
         HttpContext context,
         ITenantContextSetter tenantContextSetter,
-        IOptions<TenantLogContextMiddlewareOptions> optionsAccessor)
+        IOptions<TenantLogContextMiddlewareOptions> optionsAccessor,
+        IOptions<TenantLoggingOptions> loggingOptionsAccessor)
     {
         TenantLogContextMiddlewareOptions options = optionsAccessor.Value;
         string? tenantId = options.TenantIdResolver(context);
-        string tenantPropertyName = string.IsNullOrWhiteSpace(options.TenantPropertyName)
+        string tenantPropertyName = string.IsNullOrWhiteSpace(loggingOptionsAccessor.Value.TenantPropertyName)
             ? "TenantId"
-            : options.TenantPropertyName;
+            : loggingOptionsAccessor.Value.TenantPropertyName;
 
         using IDisposable tenantScope = tenantContextSetter.BeginScope(tenantId);
         using IDisposable logScope = PushTenantPropertyIfPresent(tenantId, tenantPropertyName);
