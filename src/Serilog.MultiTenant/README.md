@@ -98,6 +98,37 @@ builder.Services.AddSerilogMultiTenant(
     });
 ```
 
+## Advertencia: el nivel mínimo global de Serilog puede tapar al filtro
+
+Serilog descarta un `LogEvent` por debajo de su `MinimumLevel` (y de cualquier
+`MinimumLevel:Override` por namespace) **antes** de que se evalúe ningún
+`Filter`, incluido `TenantAwareLogEventFilter`. Si ese nivel global es más
+restrictivo que lo que un tenant necesita, el filtro nunca llega a ver esos
+eventos y el override del tenant no tiene efecto alguno.
+
+Por eso `UseTenantAwareLevelFiltering(services)` fija internamente
+`MinimumLevel.Verbose()`: así el pipeline captura todo y es el filtro
+tenant-aware quien decide, por evento, qué se descarta según el nivel
+efectivo de cada tenant. Tené en cuenta:
+
+- **Orden de configuración**: llamá `UseTenantAwareLevelFiltering` *después*
+  de `ReadFrom.Configuration` (como en los ejemplos anteriores). Si se llama
+  antes, un `Serilog:MinimumLevel` definido en `appsettings.json` puede
+  sobrescribir el `Verbose()` y volver a filtrar eventos antes de que el
+  filtro los evalúe.
+- **`MinimumLevel:Override` por namespace**: los overrides por namespace
+  (por ejemplo `"Serilog:MinimumLevel:Override:Microsoft": "Warning"`) son
+  independientes del nivel global y **no** se ven afectados por el
+  `MinimumLevel.Verbose()` de `UseTenantAwareLevelFiltering`. Si un tenant
+  necesita ver eventos más detallados que ese override, los eventos se
+  seguirán descartando antes de llegar al filtro. Revisá que no existan
+  overrides por namespace más estrictos que el nivel más verboso que
+  cualquier tenant pueda necesitar.
+- **Configuración manual**: si en lugar de `UseTenantAwareLevelFiltering`
+  llamás directamente a `.Filter.ByTenantLevel(...)`, sos responsable de
+  fijar vos mismo un `MinimumLevel` (global y por override) igual o más
+  verboso que el nivel más detallado que cualquier tenant pueda requerir.
+
 ## Overrides dinámicos
 
 ```csharp
