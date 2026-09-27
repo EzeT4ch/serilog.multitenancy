@@ -4,6 +4,13 @@
 
 - El pipeline interno de Serilog se configura con `MinimumLevel.Verbose`.
 - Motivo: permitir overrides de tenant más verbosos que el nivel base de negocio.
+- **Límite conocido**: esta captura amplia solo cubre el `MinimumLevel`
+  *default* del logger. Un `MinimumLevel:Override` por namespace (definido en
+  código o en `appsettings.json`) sigue descartando eventos de ese namespace
+  antes de que `TenantAwareLogEventFilter` los evalúe, y no se ve afectado
+  por `MinimumLevel.Verbose()`. Además, si algo configura el `MinimumLevel`
+  global *después* de `UseTenantAwareLevelFiltering`, puede volver a
+  restringir la captura. Ver advertencia en el `README` de la librería.
 
 ## Decisión 2: nivel efectivo por tenant en filtro
 

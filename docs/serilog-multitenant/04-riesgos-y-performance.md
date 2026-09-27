@@ -28,6 +28,17 @@
 - Riesgo: cortar el logging por excepción.
 - Mitigación: fail-safe obligatorio, fallback al nivel base.
 
+### 5) Nivel mínimo global u overrides por namespace más estrictos que el filtro
+
+- Riesgo: Serilog descarta eventos por `MinimumLevel` (global o por
+  `MinimumLevel:Override` de namespace) antes de que `TenantAwareLogEventFilter`
+  se ejecute. Un tenant configurado para un nivel más detallado no recibirá
+  esos eventos si el pipeline ya los descartó antes de llegar al filtro.
+- Mitigación: usar `UseTenantAwareLevelFiltering` (fija `MinimumLevel.Verbose()`
+  global) y llamarlo *después* de `ReadFrom.Configuration`; revisar que no
+  existan `MinimumLevel:Override` por namespace más estrictos que el nivel
+  más verboso que algún tenant pueda necesitar.
+
 ## Métricas recomendadas
 
 - `tenant_level_override_hits`
