@@ -20,6 +20,8 @@ Proyecto para encapsular la extensión multi-tenant de Serilog.
 
 ## Uso rápido
 
+### Nivel base fijo en código
+
 ```csharp
 using Serilog;
 using Serilog.Events;
@@ -43,6 +45,57 @@ builder.Host.UseSerilog((context, services, loggerConfig) =>
 
 WebApplication app = builder.Build();
 app.UseTenantLogContext();
+```
+
+### Nivel base y overrides desde `IConfiguration`
+
+El filtro también puede conectarse directamente a la configuración de la aplicación
+(por ejemplo `appsettings.json`), sin necesidad de fijar el nivel base en código:
+
+```json
+{
+  "Serilog": {
+    "MultiTenant": {
+      "BaseLevel": "Information",
+      "TenantPropertyName": "TenantId",
+      "TenantOverrides": {
+        "tenant-a": "Verbose",
+        "tenant-b": "Warning"
+      }
+    }
+  }
+}
+```
+
+```csharp
+builder.Services.AddSerilogMultiTenant(
+    builder.Configuration,
+    configureTenantLogContext: options =>
+    {
+        options.TenantIdResolver = context => context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+    });
+
+builder.Host.UseSerilog((context, services, loggerConfig) =>
+{
+    loggerConfig
+        .ReadFrom.Configuration(context.Configuration)
+        .UseTenantAwareLevelFiltering(services);
+});
+```
+
+Por defecto se lee la sección `Serilog:MultiTenant`; puede cambiarse con el parámetro
+`configSectionPath`. Para cualquier caso no cubierto por la configuración -o para
+forzar un valor distinto- se puede pasar `configureTenantLogging`, que siempre se
+aplica **después** del binding de configuración y tiene la última palabra:
+
+```csharp
+builder.Services.AddSerilogMultiTenant(
+    builder.Configuration,
+    configureTenantLogging: options =>
+    {
+        // Gana sobre lo que venga de appsettings.json.
+        options.BaseLevel = LogEventLevel.Warning;
+    });
 ```
 
 ## Overrides dinámicos
